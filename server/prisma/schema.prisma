@@ -14,12 +14,34 @@ datasource db {
 }
 
 model User {
-  id         String  @id @default(cuid())
-  email      String  @unique
-  password   String  @unique
-  name       String
-  preference String?
+  id           String  @id @default(cuid())
+  email        String  @unique
+  password     String  @unique
+  name         String
+  preference   String?
+  profileImage String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  note Note[]
+
+  @@index([id, email])
+  @@map("users")
+}
+
+model Note {
+  id       String  @id @default(cuid())
+  title    String
+  body     String?
+  archived Boolean @default(false)
+  userId   String
+  user     User    @relation(fields: [userId], references: [id])
+  color    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([id, title, userId])
+  @@map("notes")
 }
