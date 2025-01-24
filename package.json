@@ -6,11 +6,15 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "@hono/zod-validator": "^0.4.2",
     "@prisma/client": "^6.2.1",
+    "bcryptjs": "^2.4.3",
     "dotenv": "^16.4.7",
-    "hono": "^4.6.18"
+    "hono": "^4.6.18",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.11.17",
     "prisma": "^6.2.1",
     "tsx": "^4.7.1"

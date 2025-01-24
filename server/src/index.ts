@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
 import { configDotenv } from "dotenv";
+import { Hono } from "hono";
 import { env } from "./lib/env.js";
 import authRoutes from "./routes/auth.route.js";
 
