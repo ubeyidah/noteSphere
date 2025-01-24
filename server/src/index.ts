@@ -15,11 +15,11 @@ app.route("/notes", noteRoute);
 
 // error handler
 app.onError((error, c) => {
-  const message = error.message || "Internal server error";
+  const message = "Internal server error";
   const statusCode = 500;
 
   // dev log
-  console.error(message, error.cause);
+  console.error(error.message, error.cause);
 
   return c.json({ data: null, success: false, error: { message } }, statusCode);
 });

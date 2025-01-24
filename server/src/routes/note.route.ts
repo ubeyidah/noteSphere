@@ -106,4 +106,25 @@ noteRoute.get(
   }
 );
 
+noteRoute.delete(
+  "/:noteId",
+  protectRoute,
+  zValidator("param", noteIdSchema, (result, c) => customValidator(result, c)),
+  async (c) => {
+    const { userId } = c.var;
+    const { noteId } = c.req.valid("param");
+    await db.note.delete({
+      where: {
+        userId,
+        id: noteId,
+      },
+    });
+    return c.json({
+      data: { message: "note deleted successfully" },
+      error: null,
+      success: true,
+    });
+  }
+);
+
 export default noteRoute;
