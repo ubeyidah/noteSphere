@@ -5,6 +5,8 @@ import db from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { genTokenAndSetCookie } from "../lib/auth.lib.js";
 import { customValidator } from "../lib/validator.js";
+import { deleteCookie } from "hono/cookie";
+import { env } from "../lib/env.js";
 
 const authRoutes = new Hono();
 
@@ -43,6 +45,7 @@ authRoutes.post(
     );
   }
 );
+
 authRoutes.post(
   "/sign-in",
   zValidator("json", signInSchema, (result, c) => customValidator(result, c)),
@@ -80,7 +83,21 @@ authRoutes.post(
     );
   }
 );
-authRoutes.post("/sign-out");
+
+authRoutes.get("/sign-out", (c) => {
+  deleteCookie(c, "noteSphereSession", {
+    expires: new Date(),
+    maxAge: 0,
+    httpOnly: true,
+    sameSite: "Strict",
+    secure: env("STATUS") !== "dev",
+  });
+  return c.json(
+    { success: true, data: { message: "signout successfully" }, error: null },
+    200
+  );
+});
+
 authRoutes.get("/me");
 
 export default authRoutes;
