@@ -1,7 +1,10 @@
 import { Hono } from "hono";
 import protectRoute from "../middlewares/protectRoute.middleware.js";
 import { zValidator } from "@hono/zod-validator";
-import { noteCreateSchema } from "../validations/note.validation.js";
+import {
+  noteCreateSchema,
+  noteIdSchema,
+} from "../validations/note.validation.js";
 import { customValidator } from "../lib/validator.js";
 import db from "../config/db.js";
 import { titleToSlug } from "../lib/utils.js";
@@ -84,18 +87,23 @@ noteRoute.get("/", protectRoute, async (c) => {
   });
 });
 
-noteRoute.get("/:noteId", protectRoute, async (c) => {
-  const { userId } = c.var;
-  const { noteId } = c.req.param();
-  const note = await db.note.findFirst({
-    where: {
-      AND: [{ id: noteId }, { userId }],
-    },
-    include: {
-      tags: true,
-    },
-  });
-  return c.json({ data: { note }, error: null, success: true });
-});
+noteRoute.get(
+  "/:noteId",
+  protectRoute,
+  zValidator("param", noteIdSchema, (result, c) => customValidator(result, c)),
+  async (c) => {
+    const { userId } = c.var;
+    const { noteId } = c.req.valid("param");
+    const note = await db.note.findFirst({
+      where: {
+        AND: [{ id: noteId }, { userId }],
+      },
+      include: {
+        tags: true,
+      },
+    });
+    return c.json({ data: { note }, error: null, success: true });
+  }
+);
 
 export default noteRoute;
