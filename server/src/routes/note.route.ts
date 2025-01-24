@@ -4,7 +4,7 @@ import { zValidator } from "@hono/zod-validator";
 import { noteCreateSchema } from "../validations/note.validation.js";
 import { customValidator } from "../lib/validator.js";
 import db from "../config/db.js";
-import { slugGen } from "../lib/utils.js";
+import { titleToSlug } from "../lib/utils.js";
 
 const noteRoute = new Hono();
 
@@ -17,7 +17,7 @@ noteRoute.post(
   async (c) => {
     const { title, body } = c.req.valid("json");
     const userId = c.var.userId;
-    const slug = slugGen(title);
+    const slug = titleToSlug(title);
     await db.note.create({
       data: {
         title,
@@ -82,6 +82,20 @@ noteRoute.get("/", protectRoute, async (c) => {
     error: null,
     success: true,
   });
+});
+
+noteRoute.get("/:noteId", protectRoute, async (c) => {
+  const { userId } = c.var;
+  const { noteId } = c.req.param();
+  const note = await db.note.findFirst({
+    where: {
+      AND: [{ id: noteId }, { userId }],
+    },
+    include: {
+      tags: true,
+    },
+  });
+  return c.json({ data: { note }, error: null, success: true });
 });
 
 export default noteRoute;
