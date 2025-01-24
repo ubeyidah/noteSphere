@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { signUpSchema } from "../validations/auth.validation.js";
 import db from "../config/db.js";
 import bcrypt from "bcryptjs";
+import { genTokenAndSetCookie } from "../lib/auth.lib.js";
 
 const authRoutes = new Hono();
 
@@ -12,7 +13,7 @@ authRoutes.post("/sign-up", zValidator("json", signUpSchema), async (c) => {
   if (isUserExists) {
     return c.json({
       success: false,
-      error: { message: "Email address already taken by others" },
+      error: { message: "Email address already token by others" },
       data: null,
     });
   }
@@ -26,8 +27,7 @@ authRoutes.post("/sign-up", zValidator("json", signUpSchema), async (c) => {
       password: hasedPassword,
     },
   });
-  // send token to the cookie
-
+  genTokenAndSetCookie(c, user.id);
   //   split the password from the user object
   const { password: _, ...userToSend } = user;
   return c.json(
