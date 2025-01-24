@@ -3,6 +3,7 @@ import { configDotenv } from "dotenv";
 import { Hono } from "hono";
 import { env } from "./lib/env.js";
 import authRoutes from "./routes/auth.route.js";
+import noteRoute from "./routes/note.route.js";
 
 // init
 const app = new Hono().basePath("/api");
@@ -10,6 +11,7 @@ configDotenv();
 
 // routes
 app.route("/auth", authRoutes);
+app.route("/notes", noteRoute);
 
 // error handler
 app.onError((error, c) => {
