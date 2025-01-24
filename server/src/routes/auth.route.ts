@@ -59,6 +59,25 @@ authRoutes.post(
         400
       );
     }
+    const isMatchPass = await bcrypt.compare(password, user.password);
+    if (!isMatchPass) {
+      return c.json(
+        {
+          data: null,
+          success: false,
+          error: { message: "Incorrect password" },
+        },
+        400
+      );
+    }
+    genTokenAndSetCookie(c, user.id);
+    //   split the password from the user object
+
+    const { password: _, ...userToSend } = user;
+    return c.json(
+      { data: { user: userToSend }, error: null, success: true },
+      200
+    );
   }
 );
 authRoutes.post("/sign-out");
