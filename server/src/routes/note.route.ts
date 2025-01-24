@@ -73,18 +73,21 @@ noteRoute.get("/", protectRoute, async (c) => {
   ]);
   const totalPages = Math.ceil(totalNotes / limit);
   const currentPage = notes.length <= 0 ? 0 : page;
-  return c.json({
-    data: {
-      notes,
-      pagination: {
-        currentPage,
-        totalPages,
-        totalNotes,
+  return c.json(
+    {
+      data: {
+        notes,
+        pagination: {
+          currentPage,
+          totalPages,
+          totalNotes,
+        },
       },
+      error: null,
+      success: true,
     },
-    error: null,
-    success: true,
-  });
+    200
+  );
 });
 
 noteRoute.get(
@@ -102,7 +105,7 @@ noteRoute.get(
         tags: true,
       },
     });
-    return c.json({ data: { note }, error: null, success: true });
+    return c.json({ data: { note }, error: null, success: true }, 200);
   }
 );
 
@@ -119,11 +122,50 @@ noteRoute.delete(
         id: noteId,
       },
     });
-    return c.json({
-      data: { message: "note deleted successfully" },
-      error: null,
-      success: true,
+    return c.json(
+      {
+        data: { message: "note deleted successfully" },
+        error: null,
+        success: true,
+      },
+      200
+    );
+  }
+);
+
+noteRoute.patch(
+  "/notes/:noteId/archive",
+  protectRoute,
+  zValidator("param", noteIdSchema, (result, c) => customValidator(result, c)),
+  async (c) => {
+    const { userId } = c.var;
+    const { noteId } = c.req.valid("param");
+    const targetedNote = await db.note.findFirst({
+      where: { id: noteId, userId },
+      select: { archived: true },
     });
+    if (!targetedNote) {
+      return c.json(
+        {
+          error: { message: "Note not found" },
+          sccess: false,
+          data: null,
+        },
+        404
+      );
+    }
+    const note = await db.note.update({
+      where: { id: noteId, userId },
+      data: { archived: !targetedNote.archived },
+    });
+    return c.json(
+      {
+        error: null,
+        sccess: false,
+        data: { note },
+      },
+      404
+    );
   }
 );
 
