@@ -11,6 +11,17 @@ configDotenv();
 // routes
 app.route("/auth", authRoutes);
 
+// error handler
+app.onError((error, c) => {
+  const message = error.message || "Internal server error";
+  const statusCode = 500;
+
+  // dev log
+  console.error(message, error.cause);
+
+  return c.json({ data: null, success: false, error: { message } }, statusCode);
+});
+
 // running
 const port = env("PORT") || 8000;
 console.log(`Server is running on http://localhost:${port}`);

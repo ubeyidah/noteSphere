@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { signUpSchema } from "../validations/auth.validation.js";
+import { signInSchema, signUpSchema } from "../validations/auth.validation.js";
 import db from "../config/db.js";
 import bcrypt from "bcryptjs";
 import { genTokenAndSetCookie } from "../lib/auth.lib.js";
@@ -15,11 +15,14 @@ authRoutes.post(
     const { name, email, password } = c.req.valid("json");
     const isUserExists = await db.user.findUnique({ where: { email } });
     if (isUserExists) {
-      return c.json({
-        success: false,
-        error: { message: "Email address already token by others" },
-        data: null,
-      });
+      return c.json(
+        {
+          success: false,
+          error: { message: "Email address already token by others" },
+          data: null,
+        },
+        400
+      );
     }
     const salt = await bcrypt.genSalt(10);
     const hasedPassword = await bcrypt.hash(password, salt);
@@ -40,7 +43,24 @@ authRoutes.post(
     );
   }
 );
-authRoutes.post("/sign-in");
+authRoutes.post(
+  "/sign-in",
+  zValidator("json", signInSchema, (result, c) => customValidator(result, c)),
+  async (c) => {
+    const { email, password } = c.req.valid("json");
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return c.json(
+        {
+          data: null,
+          success: false,
+          error: { message: "Incorrect email adress" },
+        },
+        400
+      );
+    }
+  }
+);
 authRoutes.post("/sign-out");
 authRoutes.get("/me");
 
