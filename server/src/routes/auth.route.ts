@@ -7,6 +7,7 @@ import { genTokenAndSetCookie } from "../lib/auth.lib.js";
 import { customValidator } from "../lib/validator.js";
 import { deleteCookie } from "hono/cookie";
 import { env } from "../lib/env.js";
+import protectRoute from "../middlewares/protectRoute.middleware.js";
 
 const authRoutes = new Hono();
 
@@ -98,6 +99,24 @@ authRoutes.get("/sign-out", (c) => {
   );
 });
 
-authRoutes.get("/me");
+authRoutes.get("/me", protectRoute, async (c) => {
+  const userId = c.var.userId;
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    return c.json(
+      {
+        data: null,
+        success: false,
+        error: { message: "user not found" },
+      },
+      404
+    );
+  }
+  const { password, ...userToSend } = user;
+  return c.json(
+    { data: { user: userToSend }, error: null, success: true },
+    200
+  );
+});
 
 export default authRoutes;
