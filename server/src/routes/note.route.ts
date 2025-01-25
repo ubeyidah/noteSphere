@@ -8,11 +8,92 @@ import {
   noteCreateSchema,
   noteIdSchema,
   noteUpdateSchema,
+  searchNoteSchema,
 } from "../validations/note.validation.js";
 import { verifyNoteOwnership } from "../lib/auth.lib.js";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 const noteRoute = new Hono();
+
+noteRoute.post(
+  "/search",
+  protectRoute,
+  zValidator("json", searchNoteSchema, (result, c) =>
+    customValidator(result, c)
+  ),
+  async (c) => {
+    const { userId } = c.var;
+    const querys = c.req.valid("json");
+    const page = querys?.page || 1;
+    const limit = querys?.limit || 10;
+    const archived = querys.archived ? { archived: querys.archived } : {};
+    const searchQuary = {
+      ...archived,
+      OR: [
+        {
+          title: {
+            contains: querys.query,
+          },
+        },
+        {
+          body: {
+            contains: querys.query,
+          },
+        },
+        ...(querys.tagName
+          ? [{ tags: { some: { name: { contains: querys.tagName } } } }]
+          : []),
+        ...(querys.color
+          ? [{ tags: { some: { color: { contains: querys.color } } } }]
+          : []),
+        { slug: querys.slug },
+      ],
+      userId,
+    };
+
+    const [notes, totalNotes] = await Promise.all([
+      db.note.findMany({
+        where: searchQuary,
+        take: limit,
+        skip: (page - 1) * limit,
+        omit: {
+          body: true,
+        },
+        ...(querys.sort
+          ? { orderBy: { [querys.sort.sortBy]: querys.sort.sortOrder } }
+          : {}),
+        include: {
+          tags: {
+            select: {
+              name: true,
+              color: true,
+              id: true,
+            },
+          },
+        },
+      }),
+      db.note.count({ where: searchQuary }),
+    ]);
+
+    const totalPages = Math.ceil(totalNotes / limit);
+    const currentPage = notes.length <= 0 ? 0 : page;
+    return c.json(
+      {
+        data: {
+          notes,
+          pagination: {
+            currentPage,
+            totalPages,
+            totalNotes,
+          },
+        },
+        error: null,
+        success: true,
+      },
+      200
+    );
+  }
+);
 
 noteRoute.post(
   "/",
@@ -57,7 +138,7 @@ noteRoute.get("/", protectRoute, async (c) => {
       ...q,
     },
     take: limit,
-    skip: page - 1,
+    skip: (page - 1) * limit,
     omit: {
       body: true,
     },
