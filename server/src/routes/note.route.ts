@@ -1,13 +1,16 @@
-import { Hono } from "hono";
-import protectRoute from "../middlewares/protectRoute.middleware.js";
 import { zValidator } from "@hono/zod-validator";
+import { Hono } from "hono";
+import db from "../config/db.js";
+import { titleToSlug } from "../lib/utils.js";
+import { customValidator } from "../lib/validator.js";
+import protectRoute from "../middlewares/protectRoute.middleware.js";
 import {
   noteCreateSchema,
   noteIdSchema,
+  noteUpdateSchema,
 } from "../validations/note.validation.js";
-import { customValidator } from "../lib/validator.js";
-import db from "../config/db.js";
-import { titleToSlug } from "../lib/utils.js";
+import { verifyNoteOwnership } from "../lib/auth.lib.js";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 const noteRoute = new Hono();
 
@@ -97,6 +100,15 @@ noteRoute.get(
   async (c) => {
     const { userId } = c.var;
     const { noteId } = c.req.valid("param");
+    const res = await verifyNoteOwnership(userId, noteId);
+    if (res) {
+      const status: ContentfulStatusCode | undefined =
+        res.statusCode as ContentfulStatusCode;
+      return c.json(
+        { success: false, data: null, error: { message: res?.message } },
+        status
+      );
+    }
     const note = await db.note.findFirst({
       where: {
         AND: [{ id: noteId }, { userId }],
@@ -116,6 +128,15 @@ noteRoute.delete(
   async (c) => {
     const { userId } = c.var;
     const { noteId } = c.req.valid("param");
+    const res = await verifyNoteOwnership(userId, noteId);
+    if (res) {
+      const status: ContentfulStatusCode | undefined =
+        res.statusCode as ContentfulStatusCode;
+      return c.json(
+        { success: false, data: null, error: { message: res?.message } },
+        status
+      );
+    }
     await db.note.delete({
       where: {
         userId,
@@ -133,8 +154,8 @@ noteRoute.delete(
   }
 );
 
-noteRoute.patch(
-  "/notes/:noteId/archive",
+noteRoute.put(
+  "/:noteId/archive",
   protectRoute,
   zValidator("param", noteIdSchema, (result, c) => customValidator(result, c)),
   async (c) => {
@@ -164,7 +185,47 @@ noteRoute.patch(
         sccess: false,
         data: { note },
       },
-      404
+      200
+    );
+  }
+);
+
+noteRoute.put(
+  "/:noteId",
+  protectRoute,
+  zValidator("param", noteIdSchema, (result, c) => customValidator(result, c)),
+  zValidator("json", noteUpdateSchema, (result, c) =>
+    customValidator(result, c)
+  ),
+  async (c) => {
+    const { userId } = c.var;
+    const { noteId } = c.req.valid("param");
+    const updates = c.req.valid("json");
+    const res = await verifyNoteOwnership(userId, noteId);
+    if (res) {
+      const status: ContentfulStatusCode | undefined =
+        res.statusCode as ContentfulStatusCode;
+      return c.json(
+        { success: false, data: null, error: { message: res?.message } },
+        status
+      );
+    }
+    const filteredUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([_, value]) => value !== undefined)
+    );
+
+    const updatedNote = await db.note.update({
+      where: { id: noteId, userId },
+      data: filteredUpdates,
+    });
+
+    return c.json(
+      {
+        error: null,
+        sccess: false,
+        data: { note: updatedNote },
+      },
+      200
     );
   }
 );

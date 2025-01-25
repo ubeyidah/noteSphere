@@ -1,7 +1,8 @@
 import jwt from "jsonwebtoken";
 import { setCookie } from "hono/cookie";
-import type { Context } from "hono";
+import type { Context, Next } from "hono";
 import { env } from "./env.js";
+import db from "../config/db.js";
 
 export const genTokenAndSetCookie = (c: Context, id: string) => {
   const token = jwt.sign({ id }, env("JWT_SECRET"), { expiresIn: "20d" });
@@ -14,4 +15,22 @@ export const genTokenAndSetCookie = (c: Context, id: string) => {
     httpOnly: true,
     secure: env("STATUS") !== "dev",
   });
+};
+
+export const verifyNoteOwnership = async (userId: string, noteId: string) => {
+  const note = await db.note.findFirst({
+    where: {
+      id: noteId,
+    },
+    select: {
+      userId: true,
+    },
+  });
+  if (!note) {
+    return { message: "Note not found", statusCode: 404 };
+  }
+  if (userId !== userId) {
+    return { message: "unauthorized to make changes", statusCode: 401 };
+  }
+  return false;
 };
